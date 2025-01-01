@@ -16,6 +16,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Build and test in Bash
     steps:
+      # Without this XML files in `xlsx.c3l/data`
+      # have different line endings on Windows and on other platforms.
+      # This results in different XLSX files produced on different platforms.
+      - name: Ensure same LF line endings on all platforms
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
       - uses: radekm/setup-c3@v2
         with:
@@ -28,6 +35,11 @@ jobs:
           ./example
 
           ls -l .
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: example-${{ runner.os }}
+      #     path: build/example.xlsx
+      #     retention-days: 1
   build-and-test-in-cmd:
     strategy:
       matrix:
@@ -37,6 +49,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Build and test in cmd
     steps:
+      - name: Ensure same LF line endings on all platforms
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
       - uses: radekm/setup-c3@v2
         with:
@@ -51,3 +67,8 @@ jobs:
           example.exe
 
           dir
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: example-cmd
+      #     path: build/example.xlsx
+      #     retention-days: 1
