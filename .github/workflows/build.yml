@@ -1,0 +1,52 @@
+on: [push]
+
+jobs:
+  build-and-test-in-bash:
+    strategy:
+      # Continue build even if some platforms fail.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+          - os: ubuntu-latest
+            arch: x64
+          - os: windows-latest
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    name: Build and test in Bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: radekm/setup-c3@v2
+        with:
+          version: v0.6.5
+      - shell: bash
+        run: |
+          ./build-example.sh
+          cd build
+          ./example
+
+          ls -l .
+  build-and-test-in-cmd:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    name: Build and test in cmd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: radekm/setup-c3@v2
+        with:
+          version: v0.6.5
+      - shell: cmd
+        run: |
+          md build
+          cd build
+
+          c3c compile-test ..\xlsx.c3l\writer.c3
+          c3c compile --libdir .. --lib xlsx ..\example\main.c3 -o example
+          example.exe
+
+          dir
