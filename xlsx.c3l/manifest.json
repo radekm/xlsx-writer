@@ -1,0 +1,10 @@
+{
+    "provides": "xlsx",
+    "targets": {
+        "macos-aarch64": {
+            "cflags": "-mmacos-version-min=13.0"
+        },
+        "linux-x64": {},
+        "windows-x64": {}
+    }
+}
