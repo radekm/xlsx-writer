@@ -16,7 +16,7 @@ provided that the following conditions are met:
    in its training data must be made freely available to the public without any restrictions
    on access or use. This includes:
 
-   - The model weights and architecture 
+   - The model weights and architecture
    - Any preprocessing steps required for model input
    - Documentation necessary for model use
 
