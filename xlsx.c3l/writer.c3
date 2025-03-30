@@ -3,12 +3,9 @@ module xlsx;
 import std;
 import libc;
 
-fault XlsxWriterError
-{
-    INVALID_XML_CHARACTER,
-}
+faultdef INVALID_XML_CHARACTER;
 
-fn void! xml10_write_text(OutStream out, String s)
+fn void? xml10_write_text(OutStream out, String s)
 {
     foreach (Char32 c : s)
     {
@@ -18,7 +15,7 @@ fn void! xml10_write_text(OutStream out, String s)
         allowed = allowed || c >= 0xE000 && c <= 0xFFFD;
         allowed = allowed || c >= 0x10000 && c <= 0x10FFFF;
 
-        if (!allowed) return XlsxWriterError.INVALID_XML_CHARACTER?;
+        if (!allowed) return INVALID_XML_CHARACTER?;
 
         // Only `<` and `&` must be escaped in text.
         switch (c)
@@ -39,14 +36,14 @@ fn void test_xml10_write_text() @test
 {
     @pool()
     {
-        DString s = dstring::temp_new();
-        xml10_write_text(&s, "x < y && z")!;
+        DString s = dstring::temp();
+        xml10_write_text(&s, "x < y && z")!!;
         assert("x &lt; y &amp;&amp; z" == s.str_view());
 
-        s = dstring::temp_new();
-        anyfault excuse = @catch(xml10_write_text(&s, "invalid character \x05 rest won't be visible"));
+        s = dstring::temp();
+        fault excuse = @catch(xml10_write_text(&s, "invalid character \x05 rest won't be visible"));
         assert("invalid character " == s.str_view());
-        assert(XlsxWriterError.INVALID_XML_CHARACTER == excuse);
+        assert(INVALID_XML_CHARACTER == excuse);
     };
 }
 
@@ -85,13 +82,13 @@ fn void test_crc32() @test
     assert(0x0614A5CB == crc32("Hello world from CRC32!"));
 }
 
-macro void! write_le_ushort(stream, ushort s)
+macro void? write_le_ushort(stream, ushort s)
 {
     stream.write_byte((char)s)!;
     stream.write_byte((char)(s >> 8))!;
 }
 
-macro void! write_le_uint(stream, uint s)
+macro void? write_le_uint(stream, uint s)
 {
     stream.write_byte((char)s)!;
     stream.write_byte((char)(s >> 8))!;
@@ -101,7 +98,7 @@ macro void! write_le_uint(stream, uint s)
 
 // `file_name` is for a file name with a relative path.
 // All slashes in `file_name` should be forward slashes `/`.
-fn void! zip_write_local_file_header(OutStream out, String file_name)
+fn void? zip_write_local_file_header(OutStream out, String file_name)
 {
     // Signature.
     out.write("PK\x03\x04")!;
@@ -129,7 +126,7 @@ fn void! zip_write_local_file_header(OutStream out, String file_name)
     out.write(file_name)!;
 }
 
-fn void! zip_write_data_descriptor(OutStream out, uint crc32, uint uncompressed_size)
+fn void? zip_write_data_descriptor(OutStream out, uint crc32, uint uncompressed_size)
 {
     // CRC-32.
     write_le_uint(out, crc32)!;
@@ -141,7 +138,7 @@ fn void! zip_write_data_descriptor(OutStream out, uint crc32, uint uncompressed_
 
 // `file_name` is for a file name with a relative path.
 // All slashes in `file_name` should be forward slashes `/`.
-fn void! zip_write_central_directory_file_header(OutStream out, uint crc32, uint uncompressed_size, String file_name, uint local_file_header_offset)
+fn void? zip_write_central_directory_file_header(OutStream out, uint crc32, uint uncompressed_size, String file_name, uint local_file_header_offset)
 {
     // Signature.
     out.write("PK\x01\x02")!;
@@ -181,7 +178,7 @@ fn void! zip_write_central_directory_file_header(OutStream out, uint crc32, uint
     out.write(file_name)!;
 }
 
-fn void! zip_write_end_of_central_directory_record(OutStream out, ushort central_directory_entries, uint central_directory_size, uint central_directory_offset)
+fn void? zip_write_end_of_central_directory_record(OutStream out, ushort central_directory_entries, uint central_directory_size, uint central_directory_offset)
 {
     // Signature.
     out.write("PK\x05\x06")!;
@@ -205,18 +202,18 @@ fn void test_zip() @test
 {
     @pool()
     {
-        DString s = dstring::temp_new();
+        DString s = dstring::temp();
 
         String file_name = "greet.txt";
         String file_data = "Hello World!";
 
-        zip_write_local_file_header(&s, file_name)!;
+        zip_write_local_file_header(&s, file_name)!!;
         s.append_chars(file_data);
-        zip_write_data_descriptor(&s, crc32(file_data), file_data.len)!;
+        zip_write_data_descriptor(&s, crc32(file_data), file_data.len)!!;
         uint central_directory_record_offset = (uint)s.len();
-        zip_write_central_directory_file_header(&s, crc32(file_data), file_data.len, file_name, 0)!;
+        zip_write_central_directory_file_header(&s, crc32(file_data), file_data.len, file_name, 0)!!;
         uint central_directory_record_size = (uint)s.len() - central_directory_record_offset;
-        zip_write_end_of_central_directory_record(&s, 1, central_directory_record_size, central_directory_record_offset)!;
+        zip_write_end_of_central_directory_record(&s, 1, central_directory_record_size, central_directory_record_offset)!!;
     };
 }
 
@@ -329,7 +326,7 @@ struct OutStreamWithCrc (OutStream)
     usz written;
 }
 
-fn usz! OutStreamWithCrc.write(&self, char[] bytes) @dynamic
+fn usz? OutStreamWithCrc.write(&self, char[] bytes) @dynamic
 {
     usz written = self.inner.write(bytes)!;
     uint crc32 = self.crc32;
@@ -342,7 +339,7 @@ fn usz! OutStreamWithCrc.write(&self, char[] bytes) @dynamic
 	return written;
 }
 
-fn void! OutStreamWithCrc.write_byte(&self, char c) @dynamic
+fn void? OutStreamWithCrc.write_byte(&self, char c) @dynamic
 {
     self.inner.write_byte(c)!;
     self.crc32 = crc32_update(self.crc32, c);
@@ -368,7 +365,7 @@ enum XlsxNumberFormat
     DATE,
 }
 
-fn XlsxWriter! init_writer(OutStream out)
+fn XlsxWriter? init_writer(OutStream out)
 {
     XlsxWriter writer;
     writer.out.inner = out;
@@ -385,7 +382,7 @@ fn XlsxWriter! init_writer(OutStream out)
     return writer;
 }
 
-fn void! XlsxWriter.finalize_writer(XlsxWriter* self)
+fn void? XlsxWriter.finalize_writer(XlsxWriter* self)
 {
     // Close last row.
     if (self.last_row != 0)
@@ -444,7 +441,7 @@ fn void! XlsxWriter.finalize_writer(XlsxWriter* self)
 }
 
 // `style_index` refers to `<xf>` in `<cellXfs>`.
-fn void! prepare_for_writing_cell(XlsxWriter* writer, int row, int column, String cell_type, int style_index)
+fn void? prepare_for_writing_cell(XlsxWriter* writer, int row, int column, String cell_type, int style_index)
 {
     assert(writer.last_row <= row);
     assert(writer.last_row != row || writer.last_column < column);
@@ -469,7 +466,7 @@ fn void! prepare_for_writing_cell(XlsxWriter* writer, int row, int column, Strin
     writer.last_column = column;
 }
 
-fn void! XlsxWriter.write_string(XlsxWriter* self, int row, int column, String s, XlsxStyle style = {})
+fn void? XlsxWriter.write_string(XlsxWriter* self, int row, int column, String s, XlsxStyle style = {})
 {
     int style_index = style.header ? 2 : 0;
     prepare_for_writing_cell(self, row, column, "inlineStr", style_index)!;
@@ -479,7 +476,7 @@ fn void! XlsxWriter.write_string(XlsxWriter* self, int row, int column, String s
     io::fprintf(&self.out, "</c>")!;
 }
 
-fn void! XlsxWriter.write_double(XlsxWriter* self, int row, int column, double x, XlsxNumberFormat number_format = {}, XlsxStyle style = {})
+fn void? XlsxWriter.write_double(XlsxWriter* self, int row, int column, double x, XlsxNumberFormat number_format = {}, XlsxStyle style = {})
 {
     int style_index = style.header ? (number_format == DATE ? 3 : 2) : (number_format == DATE ? 1 : 0);
     prepare_for_writing_cell(self, row, column, "", style_index)!;

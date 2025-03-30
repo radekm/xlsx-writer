@@ -2,11 +2,8 @@
 import std;
 import xlsx;
 
-fn void! main()
+fn void? write_xlsx(File file)
 {
-    File file = file::open("example.xlsx", "wb")!;
-    defer file.close()!!;
-
     XlsxWriter writer = xlsx::init_writer(&file)!;
     writer.write_string(1, 1, "Header", style: { .header = true })!;
     writer.write_double(1, 2, 13.21, style: { .header = true })!;
@@ -16,4 +13,12 @@ fn void! main()
     writer.write_double(2, 2, 3.14)!;
     writer.write_double(2, 3, xlsx::excel_days_from_date(2025, 2, 28), number_format: DATE)!;
     writer.finalize_writer()!;
+}
+
+fn void main()
+{
+    File file = file::open("example.xlsx", "wb")!!;
+    defer file.close()!!;
+
+    write_xlsx(file)!!;
 }
